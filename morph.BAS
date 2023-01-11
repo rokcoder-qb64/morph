@@ -221,7 +221,7 @@ SUB LoadImages '                                                            Load
             PRINT "Unable to load "; fname
             PRINT "Please make sure EXE is in same folder as morph.BAS"
             PRINT "(Set Run/Output EXE to Source Folder option in the IDE before compiling)"
-            SYSTEM
+            END
         END IF
     NEXT i
 END SUB
