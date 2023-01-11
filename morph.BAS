@@ -9,8 +9,17 @@ SCREEN _NEWIMAGE(800, 600, 32)
 
 '==========================================================================================================================================================
 
-CONST TESSELATION = 5 '                             How far we're going to break the cube's faces down - the higher the breakdown the more vertices and textures and the better the sphere
+CONST FALSE = 0
+CONST TRUE = NOT FALSE
+
+'==========================================================================================================================================================
+
+CONST HARDWARECULLING = FALSE
+
+'==========================================================================================================================================================
+
 CONST CUBESIZE = 300 '                              The cube is of dimensions CUBESIZE x CVUBESIZE x CUBESIZE
+CONST TESSELATION = 5 '                             How far we're going to break the cube's faces down - the higher the breakdown the more vertices and textures and the better the sphere
 CONST SPHERERADIUS = SQR(3 * (CUBESIZE / 2) ^ 2) '  Make it so the corners of the cube lie on the surface of the sphere
 CONST VERTICESPERFACE = (TESSELATION + 1) ^ 2 '     Number of vertices in each face
 CONST TRIANGLESPERFACE = TESSELATION ^ 2 * 2 '      Number of triangles to render for each face
@@ -79,9 +88,11 @@ DO
     DrawShape '                                     Render to the screen
     _DISPLAY '                                      Update the sreen
 
-    angle.x = angle.x + deltaAngle.x '              Update the rotation angles
-    angle.y = angle.y + deltaAngle.y
-    angle.z = angle.z + deltaAngle.z
+    IF NOT HARDWARECULLING THEN
+        angle.x = angle.x + deltaAngle.x '              Update the rotation angles
+        angle.y = angle.y + deltaAngle.y
+        angle.z = angle.z + deltaAngle.z
+    END IF
 LOOP
 
 '===== Helper functions for 3D manipulations ==============================================================================================================
@@ -214,14 +225,21 @@ SUB LoadImages '                                                            Load
     SHARED images() AS LONG
     DIM i AS INTEGER
     DIM fname AS STRING
+    DIM image AS LONG
     FOR i = 1 TO 6
         fname = "./assets/side" + CHR$(48 + i) + ".png"
-        images(i) = _LOADIMAGE(fname)
-        IF images(i) = -1 THEN
+        image = _LOADIMAGE(fname, 32)
+        IF image = -1 THEN
             PRINT "Unable to load "; fname
             PRINT "Please make sure EXE is in same folder as morph.BAS"
             PRINT "(Set Run/Output EXE to Source Folder option in the IDE before compiling)"
             END
+        END IF
+        IF HARDWARECULLING THEN
+            images(i) = _COPYIMAGE(image, 33) '                                 Copy to hardware image
+            _FREEIMAGE (image)
+        ELSE
+            images(i) = image
         END IF
     NEXT i
 END SUB
@@ -247,6 +265,11 @@ SUB MorphShape (morphAmount AS SINGLE) '                                    Perf
         rotatedVertices(i).x = rotatedVertices(i).x * (1 + (morphRatio(i) - 1) * morphAmount)
         rotatedVertices(i).y = rotatedVertices(i).y * (1 + (morphRatio(i) - 1) * morphAmount)
         rotatedVertices(i).z = rotatedVertices(i).z * (1 + (morphRatio(i) - 1) * morphAmount)
+        IF HARDWARECULLING THEN
+            rotatedVertices(i).x = rotatedVertices(i).x * 0.7
+            rotatedVertices(i).y = rotatedVertices(i).y * 0.7
+            rotatedVertices(i).z = rotatedVertices(i).z * 0.7
+        END IF
     NEXT i
 END SUB
 
@@ -269,8 +292,13 @@ SUB DrawShape '                                                             Rend
         VectorSubtract3 rotatedVertices(p2), rotatedVertices(p1), v1
         VectorSubtract3 rotatedVertices(p3), rotatedVertices(p1), v2
         CrossProduct3 v1, v2, crossProduct '                                The vector subtractions and the cross multiply allow us to see which direction the surface normal is pointing in (for back face culling)
-        IF crossProduct.z > 0 THEN
-            _MAPTRIANGLE (uvs(p1).u, uvs(p1).v)-(uvs(p2).u, uvs(p2).v)-(uvs(p3).u, uvs(p3).v), triangles(i).texture TO(400 + rotatedVertices(p1).x, 300 + rotatedVertices(p1).y)-(400 + rotatedVertices(p2).x, 300 + rotatedVertices(p2).y)-(400 + rotatedVertices(p3).x, 300 + rotatedVertices(p3).y)
+        IF HARDWARECULLING THEN
+            _MAPTRIANGLE _CLOCKWISE (uvs(p1).u, uvs(p1).v)-(uvs(p2).u, uvs(p2).v)-(uvs(p3).u, uvs(p3).v), triangles(i).texture TO(200 + rotatedVertices(p1).x, 300 + rotatedVertices(p1).y)-(200 + rotatedVertices(p2).x, 300 + rotatedVertices(p2).y)-(200 + rotatedVertices(p3).x, 300 + rotatedVertices(p3).y)
+            _MAPTRIANGLE _ANTICLOCKWISE (uvs(p1).u, uvs(p1).v)-(uvs(p2).u, uvs(p2).v)-(uvs(p3).u, uvs(p3).v), triangles(i).texture TO(600 + rotatedVertices(p1).x, 300 + rotatedVertices(p1).y)-(600 + rotatedVertices(p2).x, 300 + rotatedVertices(p2).y)-(600 + rotatedVertices(p3).x, 300 + rotatedVertices(p3).y)
+        ELSE
+            IF crossProduct.z > 0 THEN
+                _MAPTRIANGLE (uvs(p1).u, uvs(p1).v)-(uvs(p2).u, uvs(p2).v)-(uvs(p3).u, uvs(p3).v), triangles(i).texture TO(400 + rotatedVertices(p1).x, 300 + rotatedVertices(p1).y)-(400 + rotatedVertices(p2).x, 300 + rotatedVertices(p2).y)-(400 + rotatedVertices(p3).x, 300 + rotatedVertices(p3).y)
+            END IF
         END IF
     NEXT i
 END SUB
