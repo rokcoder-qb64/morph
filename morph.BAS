@@ -213,8 +213,16 @@ END SUB
 SUB LoadImages '                                                            Load images for each side of the cube
     SHARED images() AS LONG
     DIM i AS INTEGER
+    DIM fname AS STRING
     FOR i = 1 TO 6
-        images(i) = _LOADIMAGE("./assets/side" + CHR$(48 + i) + ".png")
+        fname = "./assets/side" + CHR$(48 + i) + ".png"
+        images(i) = _LOADIMAGE(fname)
+        IF images(i) = -1 THEN
+            PRINT "Unable to load "; fname
+            PRINT "Please make sure EXE is in same folder as morph.BAS"
+            PRINT "(Set Run/Output EXE to Source Folder option in the IDE before compiling)"
+            SYSTEM
+        END IF
     NEXT i
 END SUB
 
